@@ -1,4 +1,4 @@
-# Hyper-Kvasir
+# HyperKvasir
 This is the code repository for the Hyper-Kvasir dataset which is the largest publicly released gastrointestinal tract image dataset. In total, the dataset contains 110,079 images and 373 videos where it captures anatomical landmarks and pathological and normal findings. The results is more than 1,1 million images and video frames all together.
 
 The full dataset can be dowloaded via: https://osf.io/mh9sj
