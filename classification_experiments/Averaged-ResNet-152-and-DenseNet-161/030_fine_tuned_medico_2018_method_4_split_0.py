@@ -14,41 +14,30 @@
 
 from __future__ import print_function, division
 
-import datetime
-
 # #start = datetime.datetime.now()
 import argparse
+import copy
+import itertools
+import os
+import string
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import sklearn.metrics as mtc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim import lr_scheduler
-from torchvision import datasets, models, transforms, utils
-import pickle
-from pandas_ml import ConfusionMatrix
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import time
-import os
-import copy
-import sys
-import pandas as pd
-import numpy as np
-
-import sklearn.metrics as mtc
-from sklearn.metrics import confusion_matrix
+from classification_experiments.utils.Dataloader_with_path_Pytorch import ImageFolderWithPaths as dataset
 from sklearn.metrics import classification_report
-import itertools
-from multiprocessing import Process, freeze_support
-from torch.utils.tensorboard import SummaryWriter
-
-from tqdm import tqdm
-from torchsummary import summary
+from sklearn.metrics import confusion_matrix
 from torch.autograd import Variable
-
-from dataset.Dataloader_with_path import ImageFolderWithPaths as dataset
-
-import string
+from torch.optim import lr_scheduler
+from torch.utils.tensorboard import SummaryWriter
+from torchsummary import summary
+from torchvision import models, transforms
+from tqdm import tqdm
 
 #======================================
 # Get and set all input parameters

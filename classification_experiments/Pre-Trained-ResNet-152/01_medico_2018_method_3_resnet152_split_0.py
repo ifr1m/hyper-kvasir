@@ -14,41 +14,30 @@
 
 from __future__ import print_function, division
 
-import datetime
-
 # #start = datetime.datetime.now()
 import argparse
+import copy
+import itertools
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import sklearn.metrics as mtc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim import lr_scheduler
-from torchvision import datasets, models, transforms, utils
-import pickle
-from pandas_ml import ConfusionMatrix
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import time
-import os
-import copy
-import sys
-import yaml
-import pandas as pd
-import numpy as np
-
-import sklearn.metrics as mtc
-from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
-import itertools
-from multiprocessing import Process, freeze_support
-from torch.utils.tensorboard import SummaryWriter
-
-from tqdm import tqdm
-from torchsummary import summary
+from sklearn.metrics import confusion_matrix
 from torch.autograd import Variable
+from torch.optim import lr_scheduler
+from torch.utils.tensorboard import SummaryWriter
+from torchsummary import summary
+from torchvision import models, transforms
+from tqdm import tqdm
 
-from dataset.Dataloader_with_path import ImageFolderWithPaths as dataset
-
+from classification_experiments.utils.Dataloader_with_path_Pytorch import ImageFolderWithPaths as dataset
 
 #======================================
 # Get and set all input parameters
@@ -64,15 +53,15 @@ parser.add_argument("--py_file",default=os.path.abspath(__file__)) # store curre
 
 
 # Directories
-parser.add_argument("--data_root", 
+parser.add_argument("--data_root",
                 default="/work/vajira/DATA/hyper_kvasir/data_new/splits",
                 help="Video data root with three subfolders (fold 1,2 and 3)")
 
-parser.add_argument("--out_dir", 
+parser.add_argument("--out_dir",
                 default="/work/vajira/DATA/hyper_kvasir/output",
                 help="Main output dierectory")
 
-parser.add_argument("--tensorboard_dir", 
+parser.add_argument("--tensorboard_dir",
                 default="/work/vajira/DATA/hyper_kvasir/tensorboard",
                 help="Folder to save output of tensorboard")
 
@@ -86,7 +75,7 @@ parser.add_argument("--lr_sch_factor", type=float, default=0.1, help="Factor to 
 parser.add_argument("--lr_sch_patience", type=int, default=10, help="Num of epochs to be patience for updating lr")
 
 
-# Action handling 
+# Action handling
 parser.add_argument("--num_epochs", type=int, default=0, help="Numbe of epochs to train")
 # parser.add_argument("--start_epoch", type=int, default=0, help="Start epoch in retraining")
 parser.add_argument("action", type=str, help="Select an action to run", choices=["train", "retrain", "test", "check", "prepare"])
@@ -98,7 +87,8 @@ opt = parser.parse_args()
 #==========================================
 # Device handling
 #==========================================
-torch.cuda.set_device(opt.device_id)
+if torch.cuda.is_available():
+    torch.cuda.set_device(opt.device_id)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #===========================================
@@ -109,7 +99,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 os.makedirs(opt.out_dir, exist_ok=True)
 
 
-# make subfolder in the output folder 
+# make subfolder in the output folder
 py_file_name = opt.py_file.split("/")[-1] # Get python file name (soruce code name)
 checkpoint_dir = os.path.join(opt.out_dir, py_file_name + "/checkpoints")
 os.makedirs(checkpoint_dir, exist_ok=True)
@@ -163,7 +153,7 @@ def prepare_data():
     # Use selected fold for validation
     train_folds = list(set(opt.all_folds) - set([opt.val_fold]))
     validation_fold = opt.val_fold
-    
+
 
     # Train datasets
     image_datasets_train_all = {x: dataset(os.path.join(opt.data_root, x),
@@ -176,21 +166,21 @@ def prepare_data():
     # Validation datasets
     dataset_val = dataset(os.path.join(opt.data_root, validation_fold),
                                                 data_transforms["validation"])
-                                                
+
 
     dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=opt.bs,
                                                     shuffle=True, num_workers=opt.num_workers)
 
     dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=opt.bs,
                                                     shuffle=False, num_workers=opt.num_workers)
-                    
+
     train_size = len(dataset_train)
     val_size = len(dataset_val)
 
     print("train dataset size =", train_size)
     print("validation dataset size=", val_size)
 
-   
+
     return {"train":dataloader_train, "val":dataloader_val, "dataset_size":{"train": train_size, "val":val_size} }
 
 
@@ -232,7 +222,7 @@ exit()
 def train_model(model, optimizer, criterion, dataloaders: dict, scheduler, best_acc=0.0, start_epoch = 0):
 
     best_model_wts = copy.deepcopy(model.state_dict())
-    
+
 
     for epoch in tqdm(range(start_epoch , start_epoch + opt.num_epochs )):
 
@@ -244,8 +234,8 @@ def train_model(model, optimizer, criterion, dataloaders: dict, scheduler, best_
             else:
                 model.eval()
                 dataloader = dataloaders["val"]
-            
-            
+
+
             running_loss = 0.0
             running_corrects = 0
 
@@ -285,7 +275,7 @@ def train_model(model, optimizer, criterion, dataloaders: dict, scheduler, best_
             writer.add_scalars("Accuracy" , {phase:epoch_acc}, epoch)
 
              # update the lr based on the epoch loss
-            if phase == "val": 
+            if phase == "val":
 
                 # keep best model weights
                 if epoch_acc > best_acc:
@@ -300,17 +290,17 @@ def train_model(model, optimizer, criterion, dataloaders: dict, scheduler, best_
                 lr = optimizer.param_groups[0]['lr']
                 #print("lr=", lr)
                 writer.add_scalar("LR", lr, epoch)
-                scheduler.step(epoch_loss) 
-            
+                scheduler.step(epoch_loss)
+
 
 
             # Print output
             print('Epoch:\t  %d |Phase: \t %s | Loss:\t\t %.4f | Acc:\t %.4f '
                       % (epoch, phase, epoch_loss, epoch_acc))
-    
+
     save_model(best_model_wts, best_epoch, best_epoch_loss, best_epoch_acc)
 
-            
+
 #===============================================
 # Prepare models
 #===============================================
@@ -320,7 +310,7 @@ def prepare_model():
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, 23)
     model = model.to(device)
-    
+
     return model
 
 
@@ -330,7 +320,7 @@ def prepare_model():
 #====================================
 def run_train(retrain=False):
     model = prepare_model()
-    
+
     dataloaders = prepare_data()
 
     # optimizer = optim.Adam(model.parameters(), lr=opt.lr , weight_decay=opt.weight_decay)
@@ -364,7 +354,7 @@ def run_train(retrain=False):
 # Save models
 #=====================================
 def save_model(model_weights,  best_epoch,  best_epoch_loss, best_epoch_acc):
-   
+
     check_point_name = py_file_name + "_epoch:{}.pt".format(best_epoch) # get code file name and make a name
     check_point_path = os.path.join(checkpoint_dir, check_point_name)
     # save torch model
@@ -397,7 +387,7 @@ def check_model_graph():
     #print(inputs.shape)
     print(model)
     dummy_input = Variable(torch.rand(13, 3, 224, 224))
-    
+
     writer.add_graph(model, dummy_input) # this need the model on CPU
 
 #===============================================
@@ -405,7 +395,7 @@ def check_model_graph():
 #===============================================
 
 def test_model():
-    
+
     test_model_checkpoint = input("Please enter the path of test model:")
     checkpoint = torch.load(test_model_checkpoint)
 
@@ -472,7 +462,7 @@ def test_model():
 
     plot_confusion_matrix(cm, classes=class_names, title='my confusion matrix')
 
-    
+
 
     ##################################################################
     # classification report
@@ -506,13 +496,13 @@ def test_model():
 
     print("6. F1 score (F1) =", mtc.f1_score(y_true, y_predicted, average="weighted"))
 
-    
+
     print('Finished.. ')
 
     #====================================================================
     # Writing to a file
     #=====================================================================
-    
+
     np.set_printoptions(linewidth=np.inf)
     with open("%s/%s_evaluation.csv" % (opt.out_dir, py_file_name), "w") as f:
 
@@ -570,9 +560,9 @@ def prepare_prediction_file():
 
     with torch.no_grad():
         for i, data in tqdm(enumerate(test_dataloader, 0)):
-            
+
             inputs, labels, paths = data
-                
+
 
             df_temp = pd.DataFrame(columns=["filename", "predicted-label", "actual-label"] + class_names)
 
@@ -580,10 +570,10 @@ def prepare_prediction_file():
             #print("paths:", paths)
             filename = [list(paths)[0].split("/")[-1]]
             #print("filenames:", filename)
-            
+
             df_temp["filename"] = filename
 
-           
+
 
             inputs = inputs.to(device)
             labels = labels.to(device)
@@ -592,10 +582,10 @@ def prepare_prediction_file():
             outputs = model(inputs)
             outputs = F.softmax(outputs, 1)
             predicted_probability, predicted = torch.max(outputs.data, 1)
-            
+
             df_temp["predicted-label"] = class_names[predicted.item()]
             df_temp["actual-label"] = class_names[labels.item()]
-            
+
 
             # print("actual label:", labels.item())
             #print("predicted label:", predicted.item())
@@ -608,7 +598,7 @@ def prepare_prediction_file():
 
             df_temp[class_names] = probabilities
 
-            #record = record + [class_names[labels.item()]] + [class_names[predicted.item()]] 
+            #record = record + [class_names[labels.item()]] + [class_names[predicted.item()]]
 
             #print(record)
             #print(df_temp.head())
