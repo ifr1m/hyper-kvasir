@@ -14,6 +14,7 @@ from __future__ import print_function, division
 import argparse
 import copy
 import itertools
+import json
 import os
 import string
 from pathlib import Path
@@ -717,7 +718,13 @@ def inference():
 if __name__ == '__main__':
     print("Started data preparation")
     data_loaders = prepare_data()
-    print(vars(opt))
+
+    configs = vars(opt)
+    print(configs)
+    text_file = open(Path(opt.out_dir) / "configs.json", "wt")
+    n = text_file.write(json.dumps(configs))
+    text_file.close()
+
     print("Data is ready")
 
     # Train or retrain or inference
