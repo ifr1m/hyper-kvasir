@@ -37,7 +37,7 @@ from torchsummary import summary
 from torchvision import models, transforms
 from tqdm import tqdm
 
-from ..utils.Dataloader_with_path_Pytorch import ImageFolderWithPaths as dataset
+from classification_experiments.utils.Dataloader_with_path_Pytorch import ImageFolderWithPaths as dataset
 
 #======================================
 # Get and set all input parameters
