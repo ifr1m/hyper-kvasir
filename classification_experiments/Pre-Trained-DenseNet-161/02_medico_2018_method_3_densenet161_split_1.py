@@ -37,10 +37,10 @@ from torchvision import models, transforms
 from tqdm import tqdm
 
 from classification_experiments.utils.Dataloader_with_path_Pytorch import ImageFolderWithPaths as dataset
+
 # ======================================
 # Get and set all input parameters
 # ======================================
-from scripts.trainer_callback import SaveOutputToCloud, DestroyVastAiInstance
 
 parser = argparse.ArgumentParser()
 
@@ -751,6 +751,6 @@ if __name__ == '__main__':
 
     # Finish tensorboard writer
     writer.close()
-    training_name = Path(opt.py_file).stem + "_" + Path(opt.data_root).stem
-    SaveOutputToCloud("training-output-01").on_training_finished(training_name, Path(opt.out_dir))
-    DestroyVastAiInstance().on_training_finished(opt.vastAiId, opt.vastAiToken)
+    # training_name = Path(opt.py_file).stem + "_" + Path(opt.data_root).stem
+    # SaveOutputToCloud("training-output-01").on_training_finished(training_name, Path(opt.out_dir))
+    # DestroyVastAiInstance().on_training_finished(opt.vastAiId, opt.vastAiToken)
