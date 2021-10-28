@@ -352,7 +352,7 @@ def check_model_graph():
 
 def test_model():
     test_model_checkpoint = input("Please enter the path of test model:")
-    checkpoint = torch.load(test_model_checkpoint)
+    checkpoint = torch.load(test_model_checkpoint, map_location=device)
 
     model = prepare_model()
     model.load_state_dict(checkpoint["model_state_dict"])
